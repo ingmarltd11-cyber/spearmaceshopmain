@@ -1,1 +1,19 @@
+# Dependencies
+node_modules
 
+# Build
+dist
+.vercel
+.output
+.nitro
+.tanstack
+
+# Env — never commit secrets
+.env
+.env.*
+!.env.example
+
+# OS / IDE
+.DS_Store
+.idea
+.vscode
