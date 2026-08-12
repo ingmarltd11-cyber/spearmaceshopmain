@@ -5,6 +5,9 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getStripe } from "@/lib/stripe.server";
 
+// NOTE: price is intentionally NOT accepted from the client anymore.
+// The server looks up the real price for each product id in Supabase
+// and uses that instead — never trust a price sent by the browser.
 const bodySchema = z.object({
   ign: z
     .string()
@@ -17,8 +20,6 @@ const bodySchema = z.object({
     .array(
       z.object({
         id: z.string().uuid(),
-        name: z.string().min(1).max(120),
-        price: z.number().positive(),
         quantity: z.number().int().min(1).max(99),
       }),
     )
@@ -35,7 +36,52 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
       return json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const total = body.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    // Look up the authoritative price + name for every product id the
+    // client asked to buy. Ignore anything the client sent besides this —
+    // id and quantity are the only things we trust from them.
+    const ids = [...new Set(body.items.map((i) => i.id))];
+
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from("products")
+      .select("id, name, price, sale_price, is_visible")
+      .in("id", ids);
+
+    if (productsError) {
+      console.error(productsError);
+      return json({ error: "Could not verify products" }, { status: 500 });
+    }
+
+    const productById = new Map((products ?? []).map((p) => [p.id, p]));
+
+    const resolvedItems: {
+      id: string;
+      name: string;
+      price: number;
+      quantity: number;
+    }[] = [];
+
+    for (const item of body.items) {
+      const product = productById.get(item.id);
+      if (!product || !product.is_visible) {
+        return json(
+          { error: `Product ${item.id} is not available` },
+          { status: 400 },
+        );
+      }
+      const price =
+        product.sale_price != null && product.sale_price < product.price
+          ? product.sale_price
+          : product.price;
+
+      resolvedItems.push({
+        id: product.id,
+        name: product.name,
+        price,
+        quantity: item.quantity,
+      });
+    }
+
+    const total = resolvedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     if (total <= 0) {
       return json({ error: "Order total must be greater than zero" }, { status: 400 });
     }
@@ -45,7 +91,7 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
       .insert({
         ign: body.ign,
         email: body.email || null,
-        items: body.items,
+        items: resolvedItems,
         total,
         status: "pending",
       })
@@ -65,7 +111,7 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
         mode: "payment",
         payment_method_types: ["card"],
         customer_email: body.email || undefined,
-        line_items: body.items.map((item) => ({
+        line_items: resolvedItems.map((item) => ({
           quantity: item.quantity,
           price_data: {
             currency: "gbp",
