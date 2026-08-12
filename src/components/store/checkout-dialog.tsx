@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/lib/cart";
 import { formatGBP } from "@/lib/store-data";
 import type { Product } from "@/lib/store-data";
@@ -69,25 +68,36 @@ export function CheckoutDialog({
     }
     setErrors({});
     setSaving(true);
-    const { error } = await supabase.from("orders").insert({
-      ign: parsed.data.ign,
-      email: parsed.data.email || null,
-      items: orderItems.map((i) => ({ ...i })),
-      total: orderTotal,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error("Could not place your order. Please try again.");
-      return;
+
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ign: parsed.data.ign,
+          email: parsed.data.email || "",
+          items: orderItems.map((i) => ({
+            id: i.id,
+            name: i.name,
+            price: i.price,
+            quantity: i.quantity,
+          })),
+        }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+
+      if (!res.ok || !data.url) {
+        toast.error(data.error || "Could not start checkout. Please try again.");
+        setSaving(false);
+        return;
+      }
+
+      if (!buyNow) clear();
+      window.location.href = data.url;
+    } catch {
+      toast.error("Could not start checkout. Please try again.");
+      setSaving(false);
     }
-    toast.success(`Order placed for ${parsed.data.ign}`, {
-      description: "Open a ticket in our Discord to complete payment and delivery.",
-    });
-    if (!buyNow) clear();
-    setIgn("");
-    setEmail("");
-    onOpenChange(false);
-    onDone?.();
   };
 
   return (
@@ -97,6 +107,7 @@ export function CheckoutDialog({
           <DialogTitle>Enter your in-game name</DialogTitle>
           <DialogDescription>
             Your purchase is delivered to this Minecraft username, so please double-check it.
+            You will be redirected to Stripe to pay securely.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,7 +140,7 @@ export function CheckoutDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email (optional)</Label>
+            <Label htmlFor="email">Email (optional, for receipt)</Label>
             <Input
               id="email"
               type="email"
@@ -144,7 +155,7 @@ export function CheckoutDialog({
 
         <DialogFooter>
           <Button onClick={submit} disabled={saving || orderItems.length === 0} className="w-full">
-            {saving ? "Placing order..." : `Confirm order · ${formatGBP(orderTotal)}`}
+            {saving ? "Redirecting to payment..." : `Pay with Stripe · ${formatGBP(orderTotal)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
