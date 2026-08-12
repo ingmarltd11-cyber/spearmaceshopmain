@@ -5,9 +5,6 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getStripe } from "@/lib/stripe.server";
 
-// NOTE: price is intentionally NOT accepted from the client anymore.
-// The server looks up the real price for each product id in Supabase
-// and uses that instead — never trust a price sent by the browser.
 const bodySchema = z.object({
   ign: z
     .string()
@@ -16,7 +13,13 @@ const bodySchema = z.object({
     .max(16)
     .regex(/^[A-Za-z0-9_]+$/),
 
-  email: z.string().trim().email().max(255).optional().or(z.literal("")),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(255)
+    .optional()
+    .or(z.literal("")),
 
   items: z
     .array(
@@ -42,9 +45,7 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
       );
     }
 
-    // Look up the authoritative price + name for every product id.
-    // Never trust prices sent by the browser.
-    const ids = [...new Set(body.items.map((i) => i.id))];
+    const ids = [...new Set(body.items.map((item) => item.id))];
 
     const { data: products, error: productsError } = await supabaseAdmin
       .from("products")
@@ -61,15 +62,15 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
     }
 
     const productById = new Map(
-      (products ?? []).map((p) => [p.id, p]),
+      (products ?? []).map((product) => [product.id, product]),
     );
 
-    const resolvedItems: {
+    const resolvedItems: Array<{
       id: string;
       name: string;
       price: number;
       quantity: number;
-    }[] = [];
+    }> = [];
 
     for (const item of body.items) {
       const product = productById.get(item.id);
@@ -84,7 +85,8 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
       }
 
       const price =
-        product.sale_price != null &&
+        product.sale_price !== null &&
+        product.sale_price !== undefined &&
         product.sale_price < product.price
           ? product.sale_price
           : product.price;
@@ -142,11 +144,9 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
 
         line_items: resolvedItems.map((item) => ({
           quantity: item.quantity,
-
           price_data: {
             currency: "gbp",
             unit_amount: Math.round(item.price * 100),
-
             product_data: {
               name: item.name,
               description: `Delivered to IGN: ${body.ign}`,
@@ -174,8 +174,8 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
         url: session.url,
         orderId: order.id,
       });
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
 
       return json(
         {
