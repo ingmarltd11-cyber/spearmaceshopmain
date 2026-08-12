@@ -1,17 +1,50 @@
 import { useState } from "react";
-import { ShoppingCart } from "lucide-react";
+import { Check, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
-import { effectivePrice, formatGBP } from "@/lib/store-data";
+import {
+  effectivePrice,
+  formatGBP,
+} from "@/lib/store-data";
 import type { Product } from "@/lib/store-data";
 import { CheckoutDialog } from "./checkout-dialog";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+}: {
+  product: Product;
+}) {
   const { add } = useCart();
-  const [buyOpen, setBuyOpen] = useState(false);
-  const onSale = product.sale_price != null && product.sale_price < product.price;
+
+  const [buyOpen, setBuyOpen] =
+    useState(false);
+
+  const [added, setAdded] =
+    useState(false);
+
+  const onSale =
+    product.sale_price != null &&
+    product.sale_price < product.price;
+
+  const handleAddToCart = () => {
+    add(product);
+
+    setAdded(true);
+
+    toast.success(
+      `${product.name} added to cart`,
+    );
+
+    setTimeout(() => {
+      setAdded(false);
+    }, 1500);
+  };
+
+  const handleBuyNow = () => {
+    setBuyOpen(true);
+  };
 
   return (
     <article className="group surface-panel flex flex-col overflow-hidden transition-shadow hover:shadow-[var(--shadow-lift)]">
@@ -26,10 +59,13 @@ export function ProductCard({ product }: { product: Product }) {
         ) : (
           <div className="hero-gradient flex size-full items-center justify-center">
             <span className="font-display text-2xl font-bold text-foreground/70">
-              {product.name.slice(0, 2).toUpperCase()}
+              {product.name
+                .slice(0, 2)
+                .toUpperCase()}
             </span>
           </div>
         )}
+
         {product.badge ? (
           <span className="absolute left-3 top-3 rounded-full bg-highlight px-3 py-1 text-xs font-semibold text-highlight-foreground">
             {product.badge}
@@ -39,7 +75,10 @@ export function ProductCard({ product }: { product: Product }) {
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div>
-          <h3 className="font-display text-lg font-semibold">{product.name}</h3>
+          <h3 className="font-display text-lg font-semibold">
+            {product.name}
+          </h3>
+
           {product.description ? (
             <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm text-muted-foreground">
               {product.description}
@@ -49,34 +88,52 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="mt-auto flex items-baseline gap-2">
           <span className="font-display text-xl font-bold">
-            {formatGBP(effectivePrice(product))}
+            {formatGBP(
+              effectivePrice(product),
+            )}
           </span>
+
           {onSale ? (
             <span className="text-sm text-muted-foreground line-through">
-              {formatGBP(product.price)}
+              {formatGBP(
+                product.price,
+              )}
             </span>
           ) : null}
         </div>
 
         <div className="flex gap-2">
-          <Button className="flex-1" onClick={() => setBuyOpen(true)}>
+          <Button
+            className="flex-1"
+            onClick={handleBuyNow}
+          >
             Buy now
           </Button>
+
           <Button
             variant="outline"
             size="icon"
-            aria-label={`Add ${product.name} to cart`}
-            onClick={() => {
-              add(product);
-              toast.success(`${product.name} added to cart`);
-            }}
+            aria-label={
+              added
+                ? `${product.name} added to cart`
+                : `Add ${product.name} to cart`
+            }
+            onClick={handleAddToCart}
           >
-            <ShoppingCart className="size-4" />
+            {added ? (
+              <Check className="size-4 text-emerald-400" />
+            ) : (
+              <ShoppingCart className="size-4" />
+            )}
           </Button>
         </div>
       </div>
 
-      <CheckoutDialog open={buyOpen} onOpenChange={setBuyOpen} buyNow={product} />
+      <CheckoutDialog
+        open={buyOpen}
+        onOpenChange={setBuyOpen}
+        buyNow={product}
+      />
     </article>
   );
 }
