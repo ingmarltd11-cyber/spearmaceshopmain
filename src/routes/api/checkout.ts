@@ -1,10 +1,7 @@
-import { createServerFileRoute } from "@tanstack/react-start/server";
-import { json } from "@tanstack/react-start";
+import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getStripe } from "@/lib/stripe.server";
-
 const bodySchema = z.object({
   ign: z
     .string()
@@ -12,9 +9,13 @@ const bodySchema = z.object({
     .min(3)
     .max(16)
     .regex(/^[A-Za-z0-9_]+$/),
-
-  email: z.string().trim().email().max(255).optional().or(z.literal("")),
-
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(255)
+    .optional()
+    .or(z.literal("")),
   items: z
     .array(
       z.object({
@@ -25,162 +26,153 @@ const bodySchema = z.object({
     .min(1)
     .max(50),
 });
-
-export const Route = createServerFileRoute("/api/checkout").methods({
-  POST: async ({ request }) => {
-    let body: z.infer<typeof bodySchema>;
-
-    try {
-      body = bodySchema.parse(await request.json());
-    } catch {
-      return json(
-        { error: "Invalid request body" },
-        { status: 400 },
-      );
-    }
-
-    const ids = [...new Set(body.items.map((item) => item.id))];
-
-    const { data: products, error: productsError } = await supabaseAdmin
-      .from("products")
-      .select("id, name, price, sale_price, is_visible")
-      .in("id", ids);
-
-    if (productsError) {
-      console.error("[Supabase] Product lookup failed:", productsError);
-
-      return json(
-        { error: "Could not verify products" },
-        { status: 500 },
-      );
-    }
-
-    const productById = new Map(
-      (products ?? []).map((product) => [product.id, product]),
-    );
-
-    const resolvedItems: {
-      id: string;
-      name: string;
-      price: number;
-      quantity: number;
-    }[] = [];
-
-    for (const item of body.items) {
-      const product = productById.get(item.id);
-
-      if (!product || !product.is_visible) {
-        return json(
-          {
-            error: `Product ${item.id} is not available`,
-          },
-          { status: 400 },
+export const Route = createFileRoute("/api/checkout")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        let body: z.infer<typeof bodySchema>;
+        try {
+          body = bodySchema.parse(await request.json());
+        } catch {
+          return Response.json(
+            { error: "Invalid request body" },
+            { status: 400 },
+          );
+        }
+        const ids = [...new Set(body.items.map((item) => item.id))];
+        const { data: products, error: productsError } =
+          await supabaseAdmin
+            .from("products")
+            .select("id, name, price, sale_price, is_visible")
+            .in("id", ids);
+        if (productsError) {
+          console.error(
+            "[Supabase] Product lookup failed:",
+            productsError,
+          );
+          return Response.json(
+            { error: "Could not verify products" },
+            { status: 500 },
+          );
+        }
+        const productById = new Map(
+          (products ?? []).map((product) => [product.id, product]),
         );
-      }
-
-      const price =
-        product.sale_price != null &&
-        product.sale_price < product.price
-          ? product.sale_price
-          : product.price;
-
-      resolvedItems.push({
-        id: product.id,
-        name: product.name,
-        price,
-        quantity: item.quantity,
-      });
-    }
-
-    const total = resolvedItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0,
-    );
-
-    if (total <= 0) {
-      return json(
-        { error: "Order total must be greater than zero" },
-        { status: 400 },
-      );
-    }
-
-    const { data: order, error: orderError } = await supabaseAdmin
-      .from("orders")
-      .insert({
-        ign: body.ign,
-        email: body.email || null,
-        items: resolvedItems,
-        total,
-        status: "pending",
-      })
-      .select("id")
-      .single();
-
-    if (orderError || !order) {
-      console.error("[Supabase] Order creation failed:", orderError);
-
-      return json(
-        { error: "Could not create order" },
-        { status: 500 },
-      );
-    }
-
-    const origin = new URL(request.url).origin;
-
-    try {
-      const stripe = getStripe();
-
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-
-        payment_method_types: ["card"],
-
-        customer_email: body.email || undefined,
-
-        line_items: resolvedItems.map((item) => ({
-          quantity: item.quantity,
-
-          price_data: {
-            currency: "gbp",
-            unit_amount: Math.round(item.price * 100),
-
-            product_data: {
-              name: item.name,
-              description: `Delivered to IGN: ${body.ign}`,
+        const resolvedItems: {
+          id: string;
+          name: string;
+          price: number;
+          quantity: number;
+        }[] = [];
+        for (const item of body.items) {
+          const product = productById.get(item.id);
+          if (!product || !product.is_visible) {
+            return Response.json(
+              {
+                error: `Product ${item.id} is not available`,
+              },
+              { status: 400 },
+            );
+          }
+          const price =
+            product.sale_price != null &&
+            product.sale_price < product.price
+              ? product.sale_price
+              : product.price;
+          resolvedItems.push({
+            id: product.id,
+            name: product.name,
+            price,
+            quantity: item.quantity,
+          });
+        }
+        const total = resolvedItems.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0,
+        );
+        if (total <= 0) {
+          return Response.json(
+            { error: "Order total must be greater than zero" },
+            { status: 400 },
+          );
+        }
+        const { data: order, error: orderError } =
+          await supabaseAdmin
+            .from("orders")
+            .insert({
+              ign: body.ign,
+              email: body.email || null,
+              items: resolvedItems,
+              total,
+              status: "pending",
+            })
+            .select("id")
+            .single();
+        if (orderError || !order) {
+          console.error(
+            "[Supabase] Order creation failed:",
+            orderError,
+          );
+          return Response.json(
+            { error: "Could not create order" },
+            { status: 500 },
+          );
+        }
+        const origin = new URL(request.url).origin;
+        try {
+          const stripe = getStripe();
+          const session =
+            await stripe.checkout.sessions.create({
+              mode: "payment",
+              payment_method_types: ["card"],
+              customer_email:
+                body.email || undefined,
+              line_items: resolvedItems.map((item) => ({
+                quantity: item.quantity,
+                price_data: {
+                  currency: "gbp",
+                  unit_amount: Math.round(
+                    item.price * 100,
+                  ),
+                  product_data: {
+                    name: item.name,
+                    description: `Delivered to IGN: ${body.ign}`,
+                  },
+                },
+              })),
+              metadata: {
+                order_id: order.id,
+                ign: body.ign,
+              },
+              success_url:
+                `${origin}/checkout/success?order=${order.id}`,
+              cancel_url:
+                `${origin}/checkout/cancel?order=${order.id}`,
+            });
+          await supabaseAdmin
+            .from("orders")
+            .update({
+              stripe_session_id: session.id,
+            })
+            .eq("id", order.id);
+          return Response.json({
+            url: session.url,
+            orderId: order.id,
+          });
+        } catch (error) {
+          console.error(
+            "[Stripe] Stripe checkout error:",
+            error,
+          );
+          return Response.json(
+            {
+              error:
+                "The payment provider is currently not connected.",
             },
-          },
-        })),
-
-        metadata: {
-          order_id: order.id,
-          ign: body.ign,
-        },
-
-        success_url: `${origin}/checkout/success?order=${order.id}`,
-
-        cancel_url: `${origin}/checkout/cancel?order=${order.id}`,
-      });
-
-      await supabaseAdmin
-        .from("orders")
-        .update({
-          stripe_session_id: session.id,
-        })
-        .eq("id", order.id);
-
-      return json({
-        url: session.url,
-        orderId: order.id,
-      });
-    } catch (error) {
-      console.error("[Stripe] Stripe checkout error:", error);
-
-      return json(
-        {
-          error: "The payment provider is currently not connected.",
-        },
-        { status: 503 },
-      );
-    }
+            { status: 503 },
+          );
+        }
+      },
+    },
   },
 });
