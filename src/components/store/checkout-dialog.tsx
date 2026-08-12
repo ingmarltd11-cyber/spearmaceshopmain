@@ -24,7 +24,10 @@ const schema = z.object({
     .trim()
     .min(3, { message: "IGN must be at least 3 characters" })
     .max(16, { message: "IGN must be 16 characters or fewer" })
-    .regex(/^[A-Za-z0-9_]+$/, { message: "Only letters, numbers and underscores" }),
+    .regex(/^[A-Za-z0-9_]+$/, {
+      message: "Only letters, numbers and underscores",
+    }),
+
   email: z
     .string()
     .trim()
@@ -46,67 +49,126 @@ export function CheckoutDialog({
   buyNow?: Product;
 }) {
   const { items, total, clear } = useCart();
+
   const [ign, setIgn] = useState("");
   const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<{ ign?: string; email?: string }>({});
+  const [errors, setErrors] = useState<{
+    ign?: string;
+    email?: string;
+  }>({});
   const [saving, setSaving] = useState(false);
 
   const orderItems = buyNow
-    ? [{ id: buyNow.id, name: buyNow.name, price: effectivePrice(buyNow), quantity: 1 }]
+    ? [
+        {
+          id: buyNow.id,
+          name: buyNow.name,
+          price: effectivePrice(buyNow),
+          quantity: 1,
+        },
+      ]
     : items;
-  const orderTotal = buyNow ? effectivePrice(buyNow) : total;
+
+  const orderTotal = buyNow
+    ? effectivePrice(buyNow)
+    : total;
 
   const submit = async () => {
-    const parsed = schema.safeParse({ ign, email });
+    const parsed = schema.safeParse({
+      ign,
+      email,
+    });
+
     if (!parsed.success) {
-      const fieldErrors: { ign?: string; email?: string } = {};
+      const fieldErrors: {
+        ign?: string;
+        email?: string;
+      } = {};
+
       for (const issue of parsed.error.issues) {
-        fieldErrors[issue.path[0] as "ign" | "email"] = issue.message;
+        const field = issue.path[0];
+
+        if (field === "ign" || field === "email") {
+          fieldErrors[field] = issue.message;
+        }
       }
+
       setErrors(fieldErrors);
       return;
     }
+
     setErrors({});
     setSaving(true);
 
     try {
-      const res = await fetch("/api/checkout", {
+      const response = await fetch("/api/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           ign: parsed.data.ign,
           email: parsed.data.email || "",
-          items: orderItems.map((i) => ({
-            id: i.id,
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity,
+
+          /*
+           * ONLY send the real Supabase product UUID
+           * and quantity.
+           *
+           * The server will load the name and price
+           * directly from Supabase.
+           */
+          items: orderItems.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
           })),
         }),
       });
-      const data = (await res.json()) as { url?: string; error?: string };
 
-      if (!res.ok || !data.url) {
-        toast.error(data.error || "Could not start checkout. Please try again.");
+      const data = (await response.json()) as {
+        url?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !data.url) {
+        toast.error(
+          data.error ||
+            "Could not start checkout. Please try again.",
+        );
+
         setSaving(false);
         return;
       }
 
-      if (!buyNow) clear();
+      if (!buyNow) {
+        clear();
+      }
+
+      onDone?.();
+
       window.location.href = data.url;
     } catch {
-      toast.error("Could not start checkout. Please try again.");
+      toast.error(
+        "Could not start checkout. Please try again.",
+      );
+
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Enter your in-game name</DialogTitle>
+          <DialogTitle>
+            Enter your in-game name
+          </DialogTitle>
+
           <DialogDescription>
-            Your purchase is delivered to this Minecraft username, so please double-check it.
+            Your purchase is delivered to this Minecraft
+            username, so please double-check it.
             You will be redirected to Stripe to pay securely.
           </DialogDescription>
         </DialogHeader>
@@ -114,48 +176,89 @@ export function CheckoutDialog({
         <div className="space-y-4">
           <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm">
             {orderItems.map((item) => (
-              <div key={item.id} className="flex justify-between gap-3">
+              <div
+                key={item.id}
+                className="flex justify-between gap-3"
+              >
                 <span className="truncate">
                   {item.name} x{item.quantity}
                 </span>
-                <span className="tabular-nums">{formatGBP(item.price * item.quantity)}</span>
+
+                <span className="tabular-nums">
+                  {formatGBP(
+                    item.price * item.quantity,
+                  )}
+                </span>
               </div>
             ))}
+
             <div className="mt-2 flex justify-between border-t border-border pt-2 font-semibold">
               <span>Total</span>
-              <span className="tabular-nums">{formatGBP(orderTotal)}</span>
+
+              <span className="tabular-nums">
+                {formatGBP(orderTotal)}
+              </span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ign">IGN (Minecraft username)</Label>
+            <Label htmlFor="ign">
+              IGN (Minecraft username)
+            </Label>
+
             <Input
               id="ign"
               value={ign}
               maxLength={16}
               placeholder="Steve"
-              onChange={(e) => setIgn(e.target.value)}
+              onChange={(e) =>
+                setIgn(e.target.value)
+              }
             />
-            {errors.ign ? <p className="text-sm text-destructive">{errors.ign}</p> : null}
+
+            {errors.ign ? (
+              <p className="text-sm text-destructive">
+                {errors.ign}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email (optional, for receipt)</Label>
+            <Label htmlFor="email">
+              Email (optional, for receipt)
+            </Label>
+
             <Input
               id="email"
               type="email"
               value={email}
               maxLength={255}
               placeholder="you@example.com"
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
             />
-            {errors.email ? <p className="text-sm text-destructive">{errors.email}</p> : null}
+
+            {errors.email ? (
+              <p className="text-sm text-destructive">
+                {errors.email}
+              </p>
+            ) : null}
           </div>
         </div>
 
         <DialogFooter>
-          <Button onClick={submit} disabled={saving || orderItems.length === 0} className="w-full">
-            {saving ? "Redirecting to payment..." : `Pay with Stripe · ${formatGBP(orderTotal)}`}
+          <Button
+            onClick={submit}
+            disabled={
+              saving ||
+              orderItems.length === 0
+            }
+            className="w-full"
+          >
+            {saving
+              ? "Redirecting to payment..."
+              : `Pay with Stripe · ${formatGBP(orderTotal)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
