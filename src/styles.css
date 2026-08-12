@@ -1,13 +1,10 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-
 @custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -15,7 +12,6 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -39,13 +35,11 @@
   --color-surface: var(--surface);
   --color-highlight: var(--highlight);
   --color-highlight-foreground: var(--highlight-foreground);
-
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -54,73 +48,42 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-
   --shadow-card:
     0 1px 2px oklch(0.2 0.03 250 / 0.04),
     0 8px 24px oklch(0.2 0.03 250 / 0.06);
-
   --shadow-lift:
     0 2px 6px oklch(0.2 0.03 250 / 0.06),
     0 18px 40px oklch(0.2 0.03 250 / 0.12);
 }
-
-/* =========================================================
-   LIGHT THEME
-   ========================================================= */
-
 :root {
   --radius: 0.7rem;
-
-  /* Clean white background */
   --background: oklch(0.985 0.004 250);
   --foreground: oklch(0.19 0.025 250);
-
-  /* Slight blue-tinted surface */
   --surface: oklch(0.965 0.008 250);
-
-  /* Cards remain white */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.19 0.025 250);
-
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.19 0.025 250);
-
-  /* Main blue */
   --primary: oklch(0.55 0.19 255);
   --primary-foreground: oklch(0.99 0.005 250);
-
-  /* Neutral secondary */
   --secondary: oklch(0.95 0.01 250);
   --secondary-foreground: oklch(0.25 0.03 250);
-
   --muted: oklch(0.955 0.008 250);
   --muted-foreground: oklch(0.5 0.025 250);
-
-  /* Soft blue accent */
   --accent: oklch(0.94 0.025 250);
   --accent-foreground: oklch(0.25 0.05 255);
-
-  /* Gold for special things like sales */
   --highlight: oklch(0.78 0.16 85);
   --highlight-foreground: oklch(0.25 0.05 80);
-
-  /* Error */
   --destructive: oklch(0.58 0.21 27);
   --destructive-foreground: oklch(0.99 0.005 250);
-
   --border: oklch(0.9 0.012 250);
   --input: oklch(0.9 0.012 250);
-
   --ring: oklch(0.55 0.19 255);
-
-  /* Charts */
   --chart-1: oklch(0.55 0.19 255);
   --chart-2: oklch(0.65 0.15 210);
   --chart-3: oklch(0.78 0.16 85);
   --chart-4: oklch(0.6 0.16 300);
   --chart-5: oklch(0.62 0.2 25);
-
-  /* Sidebar */
   --sidebar: oklch(0.98 0.006 250);
   --sidebar-foreground: oklch(0.19 0.025 250);
   --sidebar-primary: oklch(0.55 0.19 255);
@@ -130,53 +93,34 @@
   --sidebar-border: oklch(0.9 0.012 250);
   --sidebar-ring: oklch(0.55 0.19 255);
 }
-
-/* =========================================================
-   DARK THEME
-   ========================================================= */
-
 .dark {
   --background: oklch(0.15 0.018 250);
   --foreground: oklch(0.97 0.008 250);
-
   --surface: oklch(0.19 0.02 250);
-
   --card: oklch(0.205 0.022 250);
   --card-foreground: oklch(0.97 0.008 250);
-
   --popover: oklch(0.205 0.022 250);
   --popover-foreground: oklch(0.97 0.008 250);
-
-  /* Brighter blue in dark mode */
   --primary: oklch(0.66 0.19 255);
   --primary-foreground: oklch(0.15 0.018 250);
-
   --secondary: oklch(0.25 0.025 250);
   --secondary-foreground: oklch(0.97 0.008 250);
-
   --muted: oklch(0.25 0.022 250);
   --muted-foreground: oklch(0.72 0.025 250);
-
   --accent: oklch(0.27 0.035 250);
   --accent-foreground: oklch(0.97 0.008 250);
-
   --highlight: oklch(0.78 0.16 85);
   --highlight-foreground: oklch(0.22 0.04 80);
-
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.98 0.005 250);
-
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-
   --ring: oklch(0.66 0.19 255);
-
   --chart-1: oklch(0.66 0.19 255);
   --chart-2: oklch(0.7 0.14 210);
   --chart-3: oklch(0.78 0.16 85);
   --chart-4: oklch(0.65 0.16 300);
   --chart-5: oklch(0.65 0.2 25);
-
   --sidebar: oklch(0.19 0.02 250);
   --sidebar-foreground: oklch(0.97 0.008 250);
   --sidebar-primary: oklch(0.66 0.19 255);
@@ -186,20 +130,13 @@
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.66 0.19 255);
 }
-
-/* =========================================================
-   BASE
-   ========================================================= */
-
 @layer base {
   * {
     border-color: var(--color-border);
   }
-
   html {
     background: var(--color-background);
   }
-
   body {
     margin: 0;
     background-color: var(--color-background);
@@ -208,7 +145,6 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-
   h1,
   h2,
   h3,
@@ -216,33 +152,21 @@
     font-family: var(--font-display);
     letter-spacing: -0.018em;
   }
-
   button,
   a {
     -webkit-tap-highlight-color: transparent;
   }
-
   ::selection {
     background: var(--color-primary);
     color: var(--color-primary-foreground);
   }
 }
-
-/* =========================================================
-   STORE PANELS
-   ========================================================= */
-
 @utility surface-panel {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
 }
-
-/* =========================================================
-   HERO
-   ========================================================= */
-
 @utility hero-gradient {
   background-image:
     radial-gradient(
@@ -261,17 +185,11 @@
       var(--color-background)
     );
 }
-
-/* =========================================================
-   SMALL QUALITY-OF-LIFE DETAILS
-   ========================================================= */
-
 a {
   transition:
     color 150ms ease,
     opacity 150ms ease;
 }
-
 button {
   transition:
     background-color 150ms ease,
@@ -279,7 +197,6 @@ button {
     color 150ms ease,
     transform 150ms ease;
 }
-
 button:active {
   transform: translateY(1px);
 }
