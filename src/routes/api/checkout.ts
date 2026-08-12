@@ -135,8 +135,7 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
         .update({ stripe_session_id: session.id })
         .eq("id", order.id);
 
-      return json({ url: session.url, orderId: order.id });
-    } catch (err) {
+      return json({ url: session.url, orderId:     } catch (err) {
       console.error(err);
       return json(
         {
@@ -147,3 +146,4 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
       );
     }
   },
+});
