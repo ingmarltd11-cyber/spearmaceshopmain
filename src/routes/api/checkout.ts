@@ -32,7 +32,7 @@ const bodySchema = z.object({
     .max(50),
 });
 
-export const ServerRoute = createServerFileRoute("/api/checkout").methods({
+export const Route = createServerFileRoute("/api/checkout").methods({
   POST: async ({ request }) => {
     let body: z.infer<typeof bodySchema>;
 
@@ -144,9 +144,11 @@ export const ServerRoute = createServerFileRoute("/api/checkout").methods({
 
         line_items: resolvedItems.map((item) => ({
           quantity: item.quantity,
+
           price_data: {
             currency: "gbp",
             unit_amount: Math.round(item.price * 100),
+
             product_data: {
               name: item.name,
               description: `Delivered to IGN: ${body.ign}`,
